@@ -5,24 +5,26 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Traits\ApiResponseTrait;
 use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
 use Tymon\JWTAuth\Exceptions\JWTException;
 
 class AuthController extends Controller
 {
+    use ApiResponseTrait;
+
     public function __construct(
         private readonly AuthService $authService,
     ) {}
 
     public function register(RegisterRequest $request): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'message' => 'User registered successfully.',
-            'data' => $this->authService->register($request->validated()),
-            'meta' => new \stdClass,
-        ], 201);
+        return $this->successResponse(
+            $this->authService->register($request->validated()),
+            'User registered successfully.',
+            201,
+        );
     }
 
     public function login(LoginRequest $request): JsonResponse
@@ -30,31 +32,17 @@ class AuthController extends Controller
         $authentication = $this->authService->login($request->validated());
 
         if ($authentication === null) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid email or password.',
-                'errors' => new \stdClass,
-            ], 401);
+            return $this->errorResponse('Invalid email or password.', 401);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Authenticated successfully.',
-            'data' => $authentication,
-            'meta' => new \stdClass,
-        ]);
+        return $this->successResponse($authentication, 'Authenticated successfully.');
     }
 
     public function logout(): JsonResponse
     {
         $this->authService->logout();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Logged out successfully.',
-            'data' => new \stdClass,
-            'meta' => new \stdClass,
-        ]);
+        return $this->successResponse(new \stdClass, 'Logged out successfully.');
     }
 
     public function refresh(): JsonResponse
@@ -62,30 +50,19 @@ class AuthController extends Controller
         try {
             $authentication = $this->authService->refresh();
         } catch (JWTException) {
-            return response()->json([
-                'success' => false,
-                'message' => 'A valid refreshable token is required.',
-                'errors' => new \stdClass,
-            ], 401);
+            return $this->errorResponse('A valid refreshable token is required.', 401);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Token refreshed successfully.',
-            'data' => $authentication,
-            'meta' => new \stdClass,
-        ]);
+        return $this->successResponse($authentication, 'Token refreshed successfully.');
     }
 
     public function me(): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'message' => 'Authenticated user retrieved successfully.',
-            'data' => [
+        return $this->successResponse(
+            [
                 'user' => $this->authService->user(),
             ],
-            'meta' => new \stdClass,
-        ]);
+            'Authenticated user retrieved successfully.',
+        );
     }
 }

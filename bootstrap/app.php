@@ -1,11 +1,9 @@
 <?php
 
-use Illuminate\Auth\AuthenticationException;
+use App\Exceptions\Handler;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Application;
-use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -17,19 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         //
     })
-    ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*'),
-        );
-        $exceptions->render(function (AuthenticationException $exception, Request $request): ?JsonResponse {
-            if (! $request->is('api/*')) {
-                return null;
-            }
-
-            return response()->json([
-                'success' => false,
-                'message' => $exception->getMessage(),
-                'errors' => new stdClass,
-            ], 401);
-        });
-    })->create();
+    ->withExceptions()
+    ->withSingletons([
+        ExceptionHandler::class => Handler::class,
+    ])->create();
