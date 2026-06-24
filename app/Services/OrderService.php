@@ -104,10 +104,11 @@ class OrderService
     private function replaceItems(Order $order, array $items): string
     {
         $order->items()->delete();
-        $totalAmount = '0.00';
+        $totalCents = 0;
 
         foreach ($items as $item) {
-            $subtotal = bcmul((string) $item['unit_price'], (string) $item['quantity'], 2);
+            $subtotalCents = $this->moneyToCents((string) $item['unit_price']) * $item['quantity'];
+            $subtotal = $this->centsToMoney($subtotalCents);
 
             $order->items()->create([
                 'product_name' => $item['product_name'],
@@ -116,10 +117,10 @@ class OrderService
                 'subtotal' => $subtotal,
             ]);
 
-            $totalAmount = bcadd($totalAmount, $subtotal, 2);
+            $totalCents += $subtotalCents;
         }
 
-        return $totalAmount;
+        return $this->centsToMoney($totalCents);
     }
 
     private function ensurePending(Order $order): void
@@ -127,5 +128,17 @@ class OrderService
         if ($order->status !== OrderStatus::Pending) {
             throw OrderBusinessRuleException::notPending();
         }
+    }
+
+    private function moneyToCents(string $amount): int
+    {
+        [$whole, $fraction] = array_pad(explode('.', $amount, 2), 2, '');
+
+        return ((int) $whole * 100) + (int) str_pad(substr($fraction, 0, 2), 2, '0');
+    }
+
+    private function centsToMoney(int $cents): string
+    {
+        return sprintf('%d.%02d', intdiv($cents, 100), $cents % 100);
     }
 }

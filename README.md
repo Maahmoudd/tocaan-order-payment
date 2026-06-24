@@ -1,58 +1,510 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Order Payment API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Production-oriented REST API for JWT authentication, order management, and
+strategy-based payment processing.
 
-## About Laravel
+## Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- PHP 8.3+ natively or PHP 8.5 through Laravel Sail
+- Laravel 13
+- MySQL 8.4 LTS
+- Redis and Mailpit when using Sail
+- `tymon/jwt-auth`
+- Pest 4
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+The application supports two runtime modes:
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Laravel Sail:** the application, MySQL, Redis, and Mailpit run in Docker.
+- **Native:** PHP and Composer run on the host and connect to a local MySQL
+  server. Redis and Mailpit are optional because the native profile defaults to
+  file cache/session, synchronous queues, and log mail.
 
-## Learning Laravel
+Environment templates:
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- `.env.sail.example` for Sail
+- `.env.native.example` for host PHP
+- `.env.example` mirrors the native profile for Laravel/Composer defaults
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Requirements
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+- Git
+- One of:
+  - Docker Engine with Docker Compose for Sail
+  - PHP 8.3+, Composer 2, and MySQL 8 for native execution
 
-## Agentic Development
+Required native PHP extensions include PDO MySQL, Mbstring, OpenSSL,
+Tokenizer, XML, Ctype, Fileinfo, and DOM.
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Choose a runtime
+
+Clone the repository and enter it:
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone <repository-url> order-payment-api
+cd order-payment-api
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### Option A: Laravel Sail
 
-## Contributing
+On a fresh clone, `vendor/bin/sail` does not exist yet. Bootstrap Composer
+dependencies inside Laravel's Docker Composer image:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+docker run --rm \
+  --user "$(id -u):$(id -g)" \
+  --volume "$(pwd):/var/www/html" \
+  --workdir /var/www/html \
+  laravelsail/php85-composer:latest \
+  composer install --ignore-platform-reqs --no-interaction
+```
 
-## Code of Conduct
+This is the only pre-Sail bootstrap command. Composer still runs inside Docker,
+not on the host.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Create the Sail environment and add the alias once per shell profile or terminal
+session:
 
-## Security Vulnerabilities
+```bash
+cp .env.sail.example .env
+alias sail='./vendor/bin/sail'
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Start the containers and initialize the application:
 
-## License
+```bash
+sail up -d
+sail artisan key:generate
+sail artisan jwt:secret
+sail artisan migrate --seed
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+The services are then available at:
+
+| Service | URL/connection |
+|---|---|
+| API | `http://localhost/api/v1` |
+| Health check | `http://localhost/up` |
+| Mailpit dashboard | `http://localhost:8025` |
+| MySQL from host | `127.0.0.1:3306` |
+| Redis from host | `127.0.0.1:6379` |
+
+If a host port is already occupied, set the corresponding forwarding variable
+in `.env`, for example `APP_PORT=8080` or `FORWARD_DB_PORT=3307`.
+
+Useful lifecycle commands:
+
+```bash
+sail ps
+sail stop
+sail down
+sail down -v
+```
+
+`sail down -v` also deletes local MySQL and Redis volumes.
+
+### Option B: Native PHP
+
+Install dependencies and create the native environment:
+
+```bash
+composer install
+cp .env.native.example .env
+composer check-platform-reqs
+```
+
+Create the development and testing databases with credentials matching `.env`:
+
+```sql
+CREATE DATABASE laravel CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE testing CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+For example, using a local MySQL root account:
+
+```bash
+mysql -u root -p -e \
+  "CREATE DATABASE IF NOT EXISTS laravel CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; \
+   CREATE DATABASE IF NOT EXISTS testing CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+```
+
+Update `DB_USERNAME` and `DB_PASSWORD` in `.env` if your local MySQL credentials
+differ, then initialize and start the application:
+
+```bash
+php artisan key:generate
+php artisan jwt:secret
+php artisan migrate --seed
+php artisan serve
+```
+
+The native API is available at `http://localhost:8000/api/v1`.
+
+The native profile does not require Redis or Mailpit:
+
+- `CACHE_STORE=file`
+- `SESSION_DRIVER=file`
+- `QUEUE_CONNECTION=sync`
+- `MAIL_MAILER=log`
+
+To use local Redis or Mailpit, change those `.env` values and ensure the
+services are running on the configured host and ports.
+
+## Command reference
+
+Use the command column matching the active runtime.
+
+| Task | Sail | Native |
+|---|---|---|
+| Install dependencies | `sail composer install` | `composer install` |
+| Update dependencies | `sail composer update` | `composer update` |
+| Start API | `sail up -d` | `php artisan serve` |
+| Run migrations | `sail artisan migrate` | `php artisan migrate` |
+| Rebuild and seed | `sail artisan migrate:fresh --seed` | `php artisan migrate:fresh --seed` |
+| Run seeders | `sail artisan db:seed` | `php artisan db:seed` |
+| List routes | `sail artisan route:list` | `php artisan route:list` |
+| Generate JWT secret | `sail artisan jwt:secret` | `php artisan jwt:secret` |
+| Open MySQL | `sail mysql` | `mysql -u root -p laravel` |
+| Run tests | `sail pest` | `vendor/bin/pest` |
+| Check style | `sail pint --test` | `vendor/bin/pint --test` |
+| Apply formatting | `sail pint` | `vendor/bin/pint` |
+
+## Authentication
+
+JWT access tokens are returned by registration and login. Send the token on
+protected endpoints:
+
+```http
+Authorization: Bearer <access-token>
+Accept: application/json
+```
+
+Generate or rotate the local signing secret with the command for your runtime:
+
+```bash
+# Sail
+sail artisan jwt:secret
+
+# Native
+php artisan jwt:secret
+```
+
+Rotating `JWT_SECRET` invalidates all existing tokens.
+
+Default token settings:
+
+- Access token TTL: 60 minutes
+- Refresh window: 20,160 minutes (14 days)
+- Blacklisting enabled for refresh/logout invalidation
+
+The examples below use Sail's `http://localhost` base URL. When running
+natively, use `http://localhost:8000`.
+
+Example registration:
+
+```bash
+curl --request POST http://localhost/api/v1/register \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "name": "API User",
+    "email": "user@example.com",
+    "password": "password",
+    "password_confirmation": "password"
+  }'
+```
+
+Example login:
+
+```bash
+curl --request POST http://localhost/api/v1/login \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "email": "user@example.com",
+    "password": "password"
+  }'
+```
+
+## Response envelope
+
+Successful responses:
+
+```json
+{
+  "success": true,
+  "message": "Operation completed successfully.",
+  "data": {},
+  "meta": {}
+}
+```
+
+Error responses:
+
+```json
+{
+  "success": false,
+  "message": "The given data was invalid.",
+  "errors": {}
+}
+```
+
+Common status codes are `200`, `201`, `401`, `403`, `404`, `409`, and `422`.
+
+## Endpoint reference
+
+All protected routes require a Bearer token.
+
+### Authentication
+
+| Method | Endpoint | Protected | Description |
+|---|---|---:|---|
+| POST | `/api/v1/register` | No | Register and receive a JWT |
+| POST | `/api/v1/login` | No | Authenticate and receive a JWT |
+| POST | `/api/v1/logout` | Yes | Invalidate the current token |
+| POST | `/api/v1/refresh` | Token required | Refresh a refreshable token |
+| GET | `/api/v1/me` | Yes | Return the authenticated user |
+
+### Orders
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/v1/orders` | Create a pending order |
+| GET | `/api/v1/orders` | List the authenticated user's orders |
+| GET | `/api/v1/orders/{order}` | Show an owned order |
+| PUT/PATCH | `/api/v1/orders/{order}` | Update an owned pending order |
+| DELETE | `/api/v1/orders/{order}` | Soft-delete an owned pending order |
+
+Order list query parameters:
+
+- `status`: `pending`, `confirmed`, or `cancelled`
+- `per_page`: 1–100; default 15
+
+Create-order payload:
+
+```json
+{
+  "notes": "Leave at reception",
+  "items": [
+    {
+      "product_name": "Mechanical Keyboard",
+      "quantity": 2,
+      "unit_price": "99.95"
+    }
+  ]
+}
+```
+
+`subtotal` and `total_amount` are always calculated server-side using exact
+decimal arithmetic. Client-supplied totals are ignored.
+
+Order rules:
+
+- Only the owner may view, update, or delete an order.
+- Only pending orders may be updated or deleted.
+- Orders with payments cannot be deleted.
+- An update may change `status`, `notes`, or replace `items`.
+
+### Payments
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/v1/orders/{order}/payments` | Process a payment for a confirmed order |
+| GET | `/api/v1/orders/{order}/payments` | List payments for an owned order |
+| GET | `/api/v1/payments` | List the authenticated user's payments |
+| GET | `/api/v1/payments/{payment}` | Show an owned payment |
+
+Payment list query parameters:
+
+- `gateway`: `credit_card`, `paypal`, or `stripe`
+- `status`: `pending`, `successful`, or `failed`
+- `per_page`: 1–100; default 15
+
+Order-payment list supports `per_page`.
+
+Gateway payload examples:
+
+```json
+{
+  "gateway": "credit_card",
+  "payload": {
+    "card_token": "tok_example"
+  }
+}
+```
+
+```json
+{
+  "gateway": "paypal",
+  "payload": {
+    "paypal_order_id": "PAYPAL-ORDER-ID"
+  }
+}
+```
+
+```json
+{
+  "gateway": "stripe",
+  "payload": {
+    "payment_method_id": "pm_example"
+  }
+}
+```
+
+Payment rules:
+
+- The order must be confirmed.
+- Only the order owner can process or view its payments.
+- The payment amount always comes from the order's server-calculated total.
+- Sensitive request tokens/references are not stored in payment metadata.
+- The included gateways are deterministic local adapters for development and
+  testing. Replace their internals with real provider SDK/API calls before
+  production use.
+
+## Adding a payment gateway
+
+Gateway selection uses the strategy pattern. Adding a gateway requires one
+class and one configuration entry.
+
+1. Create a class under `app/Payments/Gateways`.
+2. Implement `App\Contracts\PaymentGatewayInterface`.
+3. Implement `charge`, `refund`, and `getGatewayName`.
+4. Add the class to `config/payment.php`:
+
+```php
+'gateways' => [
+    // Existing gateways...
+    'new_gateway' => NewGateway::class,
+],
+```
+
+The manager, payment service, and controller do not need changes. If the new
+gateway requires different request fields, add its validation rules to
+`StorePaymentRequest`.
+
+After changing configuration:
+
+```bash
+# Sail
+sail artisan config:clear
+sail pest
+
+# Native
+php artisan config:clear
+vendor/bin/pest
+```
+
+## Database
+
+Run pending migrations:
+
+```bash
+# Sail
+sail artisan migrate
+
+# Native
+php artisan migrate
+```
+
+Rebuild and seed the development database:
+
+```bash
+# Sail
+sail artisan migrate:fresh --seed
+
+# Native
+php artisan migrate:fresh --seed
+```
+
+Run seeders without rebuilding:
+
+```bash
+# Sail
+sail artisan db:seed
+
+# Native
+php artisan db:seed
+```
+
+Open MySQL:
+
+```bash
+# Sail
+sail mysql
+
+# Native
+mysql -u root -p laravel
+```
+
+The test suite always uses the `testing` database configured by `phpunit.xml`.
+Sail creates this database automatically. Native installations must create it
+during first-time setup and grant the configured MySQL user access.
+
+## Tests and code style
+
+Run the complete Pest suite:
+
+```bash
+# Sail
+sail pest
+
+# Native
+vendor/bin/pest
+```
+
+Run one suite:
+
+```bash
+# Sail
+sail pest tests/Feature/OrderTest.php
+
+# Native
+vendor/bin/pest tests/Feature/OrderTest.php
+```
+
+Run style checks:
+
+```bash
+# Sail
+sail pint --test
+
+# Native
+vendor/bin/pint --test
+```
+
+Apply formatting:
+
+```bash
+# Sail
+sail pint
+
+# Native
+vendor/bin/pint
+```
+
+Current coverage includes authentication, order CRUD and totals, authorization,
+payment processing, gateway management, charge/refund strategies, and failure
+paths.
+
+## Project structure
+
+```text
+app/
+├── Contracts/             Payment gateway contract
+├── Enums/                 Order and payment statuses
+├── Exceptions/            API and business-rule exceptions
+├── Http/
+│   ├── Controllers/Api/V1
+│   ├── Requests/
+│   ├── Resources/
+│   └── Traits/
+├── Payments/
+│   ├── Gateways/
+│   └── PaymentGatewayManager.php
+├── Policies/
+├── Services/
+└── ValueObjects/
+```
+
+Controllers handle HTTP concerns and delegate business logic to services.
+Policies enforce ownership. API resources serialize responses. Database writes
+that change order/payment state use transactions and row locks.
