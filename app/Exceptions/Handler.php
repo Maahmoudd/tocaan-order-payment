@@ -45,6 +45,14 @@ class Handler extends ExceptionHandler
         );
 
         $this->renderable(
+            fn (PaymentBusinessRuleException $exception, Request $request): ?JsonResponse => $this->apiError(
+                $request,
+                $exception->getMessage(),
+                409,
+            ),
+        );
+
+        $this->renderable(
             fn (ModelNotFoundException|NotFoundHttpException $exception, Request $request): ?JsonResponse => $this->apiError(
                 $request,
                 'The requested resource was not found.',

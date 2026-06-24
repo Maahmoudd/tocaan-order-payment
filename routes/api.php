@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\OrderController;
+use App\Http\Controllers\Api\V1\PaymentController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -17,4 +18,15 @@ Route::prefix('v1')->group(function (): void {
     });
 
     Route::middleware('auth:api')->apiResource('orders', OrderController::class);
+
+    Route::middleware('auth:api')->group(function (): void {
+        Route::post('orders/{order}/payments', [PaymentController::class, 'store'])
+            ->name('orders.payments.store');
+        Route::get('orders/{order}/payments', [PaymentController::class, 'forOrder'])
+            ->name('orders.payments.index');
+        Route::get('payments', [PaymentController::class, 'index'])
+            ->name('payments.index');
+        Route::get('payments/{payment}', [PaymentController::class, 'show'])
+            ->name('payments.show');
+    });
 });
