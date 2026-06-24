@@ -40,7 +40,7 @@ Tokenizer, XML, Ctype, Fileinfo, and DOM.
 Clone the repository and enter it:
 
 ```bash
-git clone <repository-url> order-payment-api
+git clone https://github.com/Maahmoudd/tocaan-order-payment.git order-payment-api
 cd order-payment-api
 ```
 
@@ -198,6 +198,26 @@ Default token settings:
 
 The examples below use Sail's `http://localhost` base URL. When running
 natively, use `http://localhost:8000`.
+
+## Postman collection
+
+Import the published collection directly into Postman:
+
+**[Order Payment API Postman collection](https://raw.githubusercontent.com/Maahmoudd/tocaan-order-payment/main/postman/Order-Payment-API.postman_collection.json)**
+
+The collection includes request and response examples for every endpoint,
+collection variables for both runtime modes, and scripts that automatically
+save the JWT, created order ID, and created payment ID. Its default
+`base_url` is `http://localhost/api/v1`; change it to
+`http://localhost:8000/api/v1` for native PHP.
+
+Suggested workflow:
+
+1. Run `Register` (or `Login`).
+2. Run `Create Order`, `Update Order`, then `Confirm Order`.
+3. Run `Process Stripe Payment`.
+4. Use the list and detail requests with the automatically saved IDs.
+5. Run `Logout` last.
 
 Example registration:
 

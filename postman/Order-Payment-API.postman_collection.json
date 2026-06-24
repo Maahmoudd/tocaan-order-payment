@@ -1,0 +1,818 @@
+{
+  "info": {
+    "_postman_id": "03ce7371-2e77-46ae-b3b5-c93fc0f0d635",
+    "name": "Order Payment API",
+    "description": "Runnable examples for the Order Payment API. Run Register or Login first to save a JWT automatically. Create Order saves `order_id`; Confirm Order makes it payable; Process Stripe Payment saves `payment_id`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.request.headers.upsert({ key: 'Accept', value: 'application/json' });"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "email",
+      "value": "postman@example.com",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "password",
+      "type": "string"
+    },
+    {
+      "key": "order_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "delete_order_id",
+      "value": "2",
+      "type": "string"
+    },
+    {
+      "key": "payment_id",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register",
+          "auth": {
+            "type": "noauth"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "if (json.data?.access_token) pm.collectionVariables.set('access_token', json.data.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman User\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"password_confirmation\": \"{{password}}\"\n}"
+            },
+            "url": "{{base_url}}/register",
+            "description": "Registers a user and stores the returned JWT in `access_token`."
+          },
+          "response": [
+            {
+              "name": "Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Postman User\",\n  \"email\": \"postman@example.com\",\n  \"password\": \"password\",\n  \"password_confirmation\": \"password\"\n}"
+                },
+                "url": "{{base_url}}/register"
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"User registered successfully.\",\n  \"data\": {\n    \"user\": {\n      \"id\": 1,\n      \"name\": \"Postman User\",\n      \"email\": \"postman@example.com\"\n    },\n    \"access_token\": \"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.example\",\n    \"token_type\": \"bearer\",\n    \"expires_in\": 3600\n  },\n  \"meta\": {}\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "auth": {
+            "type": "noauth"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Authenticated', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "if (json.data?.access_token) pm.collectionVariables.set('access_token', json.data.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": "{{base_url}}/login",
+            "description": "Authenticates an existing user and stores the returned JWT."
+          },
+          "response": [
+            {
+              "name": "Authenticated",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"postman@example.com\",\n  \"password\": \"password\"\n}"
+                },
+                "url": "{{base_url}}/login"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Authenticated successfully.\",\n  \"data\": {\n    \"user\": {\n      \"id\": 1,\n      \"name\": \"Postman User\",\n      \"email\": \"postman@example.com\"\n    },\n    \"access_token\": \"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.example\",\n    \"token_type\": \"bearer\",\n    \"expires_in\": 3600\n  },\n  \"meta\": {}\n}"
+            }
+          ]
+        },
+        {
+          "name": "Authenticated User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/me",
+            "description": "Returns the user identified by the JWT."
+          },
+          "response": [
+            {
+              "name": "User Retrieved",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/me"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Authenticated user retrieved successfully.\",\n  \"data\": {\n    \"user\": {\n      \"id\": 1,\n      \"name\": \"Postman User\",\n      \"email\": \"postman@example.com\"\n    }\n  },\n  \"meta\": {}\n}"
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Token refreshed', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "if (json.data?.access_token) pm.collectionVariables.set('access_token', json.data.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/refresh",
+            "description": "Replaces the current refreshable JWT and updates `access_token`."
+          },
+          "response": [
+            {
+              "name": "Token Refreshed",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": "{{base_url}}/refresh"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Token refreshed successfully.\",\n  \"data\": {\n    \"user\": {\n      \"id\": 1,\n      \"name\": \"Postman User\",\n      \"email\": \"postman@example.com\"\n    },\n    \"access_token\": \"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.refreshed\",\n    \"token_type\": \"bearer\",\n    \"expires_in\": 3600\n  },\n  \"meta\": {}\n}"
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Logged out', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) pm.collectionVariables.unset('access_token');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/logout",
+            "description": "Invalidates the current JWT. Run this last."
+          },
+          "response": [
+            {
+              "name": "Logged Out",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": "{{base_url}}/logout"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Logged out successfully.\",\n  \"data\": {},\n  \"meta\": {}\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Create Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Order created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "if (json.data?.id) pm.collectionVariables.set('order_id', json.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Leave at reception\",\n  \"items\": [\n    {\n      \"product_name\": \"Mechanical Keyboard\",\n      \"quantity\": 2,\n      \"unit_price\": \"99.95\"\n    },\n    {\n      \"product_name\": \"USB-C Cable\",\n      \"quantity\": 1,\n      \"unit_price\": \"15.50\"\n    }\n  ]\n}"
+            },
+            "url": "{{base_url}}/orders",
+            "description": "Creates a pending order. Totals are calculated by the server and the ID is saved as `order_id`."
+          },
+          "response": [
+            {
+              "name": "Order Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"notes\": \"Leave at reception\",\n  \"items\": [\n    {\n      \"product_name\": \"Mechanical Keyboard\",\n      \"quantity\": 2,\n      \"unit_price\": \"99.95\"\n    },\n    {\n      \"product_name\": \"USB-C Cable\",\n      \"quantity\": 1,\n      \"unit_price\": \"15.50\"\n    }\n  ]\n}"
+                },
+                "url": "{{base_url}}/orders"
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Order created successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"user_id\": 1,\n    \"status\": \"pending\",\n    \"total_amount\": \"215.40\",\n    \"notes\": \"Leave at reception\",\n    \"items\": [\n      {\n        \"id\": 1,\n        \"product_name\": \"Mechanical Keyboard\",\n        \"quantity\": 2,\n        \"unit_price\": \"99.95\",\n        \"subtotal\": \"199.90\",\n        \"created_at\": \"2026-06-24T12:00:00.000000Z\",\n        \"updated_at\": \"2026-06-24T12:00:00.000000Z\"\n      },\n      {\n        \"id\": 2,\n        \"product_name\": \"USB-C Cable\",\n        \"quantity\": 1,\n        \"unit_price\": \"15.50\",\n        \"subtotal\": \"15.50\",\n        \"created_at\": \"2026-06-24T12:00:00.000000Z\",\n        \"updated_at\": \"2026-06-24T12:00:00.000000Z\"\n      }\n    ],\n    \"payments_count\": 0,\n    \"created_at\": \"2026-06-24T12:00:00.000000Z\",\n    \"updated_at\": \"2026-06-24T12:00:00.000000Z\"\n  },\n  \"meta\": {}\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orders?status=pending&per_page=15",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "description": "pending, confirmed, or cancelled"
+                },
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "description": "1-100"
+                }
+              ]
+            },
+            "description": "Lists the authenticated user's orders with optional status and pagination filters."
+          },
+          "response": [
+            {
+              "name": "Orders Retrieved",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/orders?status=pending&per_page=15"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Orders retrieved successfully.\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"user_id\": 1,\n      \"status\": \"pending\",\n      \"total_amount\": \"215.40\",\n      \"notes\": \"Leave at reception\",\n      \"payments_count\": 0,\n      \"created_at\": \"2026-06-24T12:00:00.000000Z\",\n      \"updated_at\": \"2026-06-24T12:00:00.000000Z\"\n    }\n  ],\n  \"meta\": {\n    \"current_page\": 1,\n    \"from\": 1,\n    \"last_page\": 1,\n    \"path\": \"http://localhost/api/v1/orders\",\n    \"per_page\": 15,\n    \"to\": 1,\n    \"total\": 1\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Show Order",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/orders/{{order_id}}",
+            "description": "Returns an owned order with its items."
+          },
+          "response": [
+            {
+              "name": "Order Retrieved",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/orders/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Order retrieved successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"user_id\": 1,\n    \"status\": \"pending\",\n    \"total_amount\": \"215.40\",\n    \"notes\": \"Leave at reception\",\n    \"items\": [\n      {\n        \"id\": 1,\n        \"product_name\": \"Mechanical Keyboard\",\n        \"quantity\": 2,\n        \"unit_price\": \"99.95\",\n        \"subtotal\": \"199.90\",\n        \"created_at\": \"2026-06-24T12:00:00.000000Z\",\n        \"updated_at\": \"2026-06-24T12:00:00.000000Z\"\n      }\n    ],\n    \"payments_count\": 0,\n    \"created_at\": \"2026-06-24T12:00:00.000000Z\",\n    \"updated_at\": \"2026-06-24T12:00:00.000000Z\"\n  },\n  \"meta\": {}\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Order",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Call on arrival\",\n  \"items\": [\n    {\n      \"product_name\": \"Mechanical Keyboard\",\n      \"quantity\": 1,\n      \"unit_price\": \"99.95\"\n    }\n  ]\n}"
+            },
+            "url": "{{base_url}}/orders/{{order_id}}",
+            "description": "Updates a pending order and recalculates totals when items are replaced."
+          },
+          "response": [
+            {
+              "name": "Order Updated",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"notes\": \"Call on arrival\",\n  \"items\": [\n    {\n      \"product_name\": \"Mechanical Keyboard\",\n      \"quantity\": 1,\n      \"unit_price\": \"99.95\"\n    }\n  ]\n}"
+                },
+                "url": "{{base_url}}/orders/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Order updated successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"user_id\": 1,\n    \"status\": \"pending\",\n    \"total_amount\": \"99.95\",\n    \"notes\": \"Call on arrival\",\n    \"items\": [\n      {\n        \"id\": 3,\n        \"product_name\": \"Mechanical Keyboard\",\n        \"quantity\": 1,\n        \"unit_price\": \"99.95\",\n        \"subtotal\": \"99.95\",\n        \"created_at\": \"2026-06-24T12:05:00.000000Z\",\n        \"updated_at\": \"2026-06-24T12:05:00.000000Z\"\n      }\n    ],\n    \"payments_count\": 0,\n    \"created_at\": \"2026-06-24T12:00:00.000000Z\",\n    \"updated_at\": \"2026-06-24T12:05:00.000000Z\"\n  },\n  \"meta\": {}\n}"
+            }
+          ]
+        },
+        {
+          "name": "Confirm Order",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"confirmed\"\n}"
+            },
+            "url": "{{base_url}}/orders/{{order_id}}",
+            "description": "Confirms a pending order so it can be paid."
+          },
+          "response": [
+            {
+              "name": "Order Confirmed",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"confirmed\"\n}"
+                },
+                "url": "{{base_url}}/orders/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Order updated successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"user_id\": 1,\n    \"status\": \"confirmed\",\n    \"total_amount\": \"99.95\",\n    \"notes\": \"Call on arrival\",\n    \"items\": [\n      {\n        \"id\": 3,\n        \"product_name\": \"Mechanical Keyboard\",\n        \"quantity\": 1,\n        \"unit_price\": \"99.95\",\n        \"subtotal\": \"99.95\",\n        \"created_at\": \"2026-06-24T12:05:00.000000Z\",\n        \"updated_at\": \"2026-06-24T12:05:00.000000Z\"\n      }\n    ],\n    \"payments_count\": 0,\n    \"created_at\": \"2026-06-24T12:00:00.000000Z\",\n    \"updated_at\": \"2026-06-24T12:06:00.000000Z\"\n  },\n  \"meta\": {}\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Pending Order",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/orders/{{delete_order_id}}",
+            "description": "Soft-deletes an owned pending order with no payments. Set `delete_order_id` to a separate pending order."
+          },
+          "response": [
+            {
+              "name": "Order Deleted",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/orders/2"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Order deleted successfully.\",\n  \"data\": {},\n  \"meta\": {}\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Process Stripe Payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Payment recorded', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "if (json.data?.id) pm.collectionVariables.set('payment_id', json.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gateway\": \"stripe\",\n  \"payload\": {\n    \"payment_method_id\": \"pm_example\"\n  }\n}"
+            },
+            "url": "{{base_url}}/orders/{{order_id}}/payments",
+            "description": "Processes the confirmed order total through the local Stripe adapter and saves `payment_id`."
+          },
+          "response": [
+            {
+              "name": "Payment Processed",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"gateway\": \"stripe\",\n  \"payload\": {\n    \"payment_method_id\": \"pm_example\"\n  }\n}"
+                },
+                "url": "{{base_url}}/orders/1/payments"
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Payment processed successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"order_id\": 1,\n    \"payment_reference\": \"fbb85d3e-195d-40d5-93d5-1cf173c14539\",\n    \"external_transaction_id\": \"stripe_01jexample\",\n    \"gateway\": \"stripe\",\n    \"status\": \"successful\",\n    \"amount\": \"99.95\",\n    \"payload\": {\n      \"response\": {\n        \"gateway\": \"stripe\",\n        \"transaction_id\": \"stripe_01jexample\",\n        \"status\": \"succeeded\"\n      },\n      \"message\": \"Stripe payment processed.\"\n    },\n    \"created_at\": \"2026-06-24T12:10:00.000000Z\",\n    \"updated_at\": \"2026-06-24T12:10:00.000000Z\"\n  },\n  \"meta\": {}\n}"
+            }
+          ]
+        },
+        {
+          "name": "Process Credit Card Payment (Failed Example)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gateway\": \"credit_card\",\n  \"payload\": {\n    \"card_token\": \"tok_example\",\n    \"simulate_failure\": true\n  }\n}"
+            },
+            "url": "{{base_url}}/orders/{{order_id}}/payments",
+            "description": "Demonstrates a persisted failed gateway outcome. The endpoint still returns 201 because the payment attempt was recorded."
+          },
+          "response": [
+            {
+              "name": "Failed Payment Recorded",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"gateway\": \"credit_card\",\n  \"payload\": {\n    \"card_token\": \"tok_example\",\n    \"simulate_failure\": true\n  }\n}"
+                },
+                "url": "{{base_url}}/orders/1/payments"
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Payment processing failed.\",\n  \"data\": {\n    \"id\": 2,\n    \"order_id\": 1,\n    \"payment_reference\": \"26b8e710-9638-4fe6-b147-d5f079882155\",\n    \"external_transaction_id\": \"cc_01jexample\",\n    \"gateway\": \"credit_card\",\n    \"status\": \"failed\",\n    \"amount\": \"99.95\",\n    \"payload\": {\n      \"response\": {\n        \"gateway\": \"credit_card\",\n        \"transaction_id\": \"cc_01jexample\",\n        \"status\": \"declined\"\n      },\n      \"message\": \"Credit card payment declined.\"\n    },\n    \"created_at\": \"2026-06-24T12:11:00.000000Z\",\n    \"updated_at\": \"2026-06-24T12:11:00.000000Z\"\n  },\n  \"meta\": {}\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Order Payments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/payments?per_page=15",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "orders",
+                "{{order_id}}",
+                "payments"
+              ],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "description": "1-100"
+                }
+              ]
+            },
+            "description": "Lists payment attempts for an owned order."
+          },
+          "response": [
+            {
+              "name": "Order Payments Retrieved",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/orders/1/payments?per_page=15"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Order payments retrieved successfully.\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"order_id\": 1,\n      \"payment_reference\": \"fbb85d3e-195d-40d5-93d5-1cf173c14539\",\n      \"external_transaction_id\": \"stripe_01jexample\",\n      \"gateway\": \"stripe\",\n      \"status\": \"successful\",\n      \"amount\": \"99.95\",\n      \"payload\": {\n        \"response\": {\n          \"gateway\": \"stripe\",\n          \"transaction_id\": \"stripe_01jexample\",\n          \"status\": \"succeeded\"\n        },\n        \"message\": \"Stripe payment processed.\"\n      },\n      \"created_at\": \"2026-06-24T12:10:00.000000Z\",\n      \"updated_at\": \"2026-06-24T12:10:00.000000Z\"\n    }\n  ],\n  \"meta\": {\n    \"current_page\": 1,\n    \"from\": 1,\n    \"last_page\": 1,\n    \"path\": \"http://localhost/api/v1/orders/1/payments\",\n    \"per_page\": 15,\n    \"to\": 1,\n    \"total\": 1\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Payments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/payments?gateway=stripe&status=successful&per_page=15",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payments"
+              ],
+              "query": [
+                {
+                  "key": "gateway",
+                  "value": "stripe",
+                  "description": "credit_card, paypal, or stripe"
+                },
+                {
+                  "key": "status",
+                  "value": "successful",
+                  "description": "pending, successful, or failed"
+                },
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "description": "1-100"
+                }
+              ]
+            },
+            "description": "Lists the authenticated user's payments with optional filters."
+          },
+          "response": [
+            {
+              "name": "Payments Retrieved",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/payments?gateway=stripe&status=successful&per_page=15"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Payments retrieved successfully.\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"order_id\": 1,\n      \"payment_reference\": \"fbb85d3e-195d-40d5-93d5-1cf173c14539\",\n      \"external_transaction_id\": \"stripe_01jexample\",\n      \"gateway\": \"stripe\",\n      \"status\": \"successful\",\n      \"amount\": \"99.95\",\n      \"payload\": {\n        \"response\": {\n          \"gateway\": \"stripe\",\n          \"transaction_id\": \"stripe_01jexample\",\n          \"status\": \"succeeded\"\n        },\n        \"message\": \"Stripe payment processed.\"\n      },\n      \"created_at\": \"2026-06-24T12:10:00.000000Z\",\n      \"updated_at\": \"2026-06-24T12:10:00.000000Z\"\n    }\n  ],\n  \"meta\": {\n    \"current_page\": 1,\n    \"from\": 1,\n    \"last_page\": 1,\n    \"path\": \"http://localhost/api/v1/payments\",\n    \"per_page\": 15,\n    \"to\": 1,\n    \"total\": 1\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Show Payment",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/payments/{{payment_id}}",
+            "description": "Returns an owned payment."
+          },
+          "response": [
+            {
+              "name": "Payment Retrieved",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/payments/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Payment retrieved successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"order_id\": 1,\n    \"payment_reference\": \"fbb85d3e-195d-40d5-93d5-1cf173c14539\",\n    \"external_transaction_id\": \"stripe_01jexample\",\n    \"gateway\": \"stripe\",\n    \"status\": \"successful\",\n    \"amount\": \"99.95\",\n    \"payload\": {\n      \"response\": {\n        \"gateway\": \"stripe\",\n        \"transaction_id\": \"stripe_01jexample\",\n        \"status\": \"succeeded\"\n      },\n      \"message\": \"Stripe payment processed.\"\n    },\n    \"created_at\": \"2026-06-24T12:10:00.000000Z\",\n    \"updated_at\": \"2026-06-24T12:10:00.000000Z\"\n  },\n  \"meta\": {}\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
