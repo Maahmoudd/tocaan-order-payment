@@ -37,29 +37,16 @@ Tokenizer, XML, Ctype, Fileinfo, and DOM.
 
 ## Choose a runtime
 
-Clone the repository and enter it:
+Clone the repository, enter it and install dependencies:
 
 ```bash
 git clone https://github.com/Maahmoudd/tocaan-order-payment.git order-payment-api
 cd order-payment-api
+composer install
 ```
 
 ### Option A: Laravel Sail
 
-On a fresh clone, `vendor/bin/sail` does not exist yet. Bootstrap Composer
-dependencies inside Laravel's Docker Composer image:
-
-```bash
-docker run --rm \
-  --user "$(id -u):$(id -g)" \
-  --volume "$(pwd):/var/www/html" \
-  --workdir /var/www/html \
-  laravelsail/php85-composer:latest \
-  composer install --ignore-platform-reqs --no-interaction
-```
-
-This is the only pre-Sail bootstrap command. Composer still runs inside Docker,
-not on the host.
 
 Create the Sail environment and add the alias once per shell profile or terminal
 session:
