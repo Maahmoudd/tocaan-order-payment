@@ -1,7 +1,7 @@
 # Order Payment API
 
-Production-oriented REST API for JWT authentication, order management, and
-strategy-based payment processing.
+Assessment-ready REST API demonstrating JWT authentication, order management,
+idempotent payment processing, and strategy-based simulated payment gateways.
 
 ## Stack
 
@@ -28,6 +28,7 @@ Environment templates:
 ## Requirements
 
 - Git
+- Node.js 20.19+ or 22.12+ when building frontend assets
 - One of:
   - Docker Engine with Docker Compose for Sail
   - PHP 8.3+, Composer 2, and MySQL 8 for native execution
@@ -279,6 +280,8 @@ All protected routes require a Bearer token.
 | GET | `/api/v1/orders` | List the authenticated user's orders |
 | GET | `/api/v1/orders/{order}` | Show an owned order |
 | PUT/PATCH | `/api/v1/orders/{order}` | Update an owned pending order |
+| POST | `/api/v1/orders/{order}/confirm` | Confirm an owned pending order |
+| POST | `/api/v1/orders/{order}/cancel` | Cancel an owned pending order |
 | DELETE | `/api/v1/orders/{order}` | Soft-delete an owned pending order |
 
 Order list query parameters:
@@ -309,7 +312,9 @@ Order rules:
 - Only the owner may view, update, or delete an order.
 - Only pending orders may be updated or deleted.
 - Orders with payments cannot be deleted.
-- An update may change `status`, `notes`, or replace `items`.
+- Generic updates may change `notes` or replace `items`.
+- Confirmation and cancellation use explicit transition endpoints.
+- Orders with payment attempts cannot be cancelled.
 
 ### Payments
 
@@ -323,7 +328,7 @@ Order rules:
 Payment list query parameters:
 
 - `gateway`: `credit_card`, `paypal`, or `stripe`
-- `status`: `pending`, `successful`, or `failed`
+- `status`: `pending`, `processing`, `successful`, `failed`, or `unknown`
 - `per_page`: 1–100; default 15
 
 Order-payment list supports `per_page`.
@@ -359,13 +364,37 @@ Gateway payload examples:
 
 Payment rules:
 
+- Every payment request must include a unique `Idempotency-Key` header.
+- Reusing the same key returns the original payment instead of charging again.
 - The order must be confirmed.
 - Only the order owner can process or view its payments.
 - The payment amount always comes from the order's server-calculated total.
+- A successful or unresolved payment blocks additional attempts for the order.
+- Definitive declines may be retried with a new idempotency key.
+- Unexpected provider errors are stored as `unknown` and require reconciliation
+  before another attempt is allowed.
 - Sensitive request tokens/references are not stored in payment metadata.
-- The included gateways are deterministic local adapters for development and
-  testing. Replace their internals with real provider SDK/API calls before
-  production use.
+- Provider response metadata is stored internally but not exposed by API
+  resources.
+- Authentication and payment creation routes are rate limited.
+- The included gateways are simulated local adapters for assessment and
+  testing only. They do not contact Stripe, PayPal, or a card processor.
+
+Example:
+
+```bash
+curl --request POST http://localhost/api/v1/orders/1/payments \
+  --header 'Authorization: Bearer <access-token>' \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --header 'Idempotency-Key: 43f33ec3-57bd-4ea2-a07a-f9ac8840a3ed' \
+  --data '{
+    "gateway": "stripe",
+    "payload": {
+      "payment_method_id": "pm_example"
+    }
+  }'
+```
 
 ## Adding a payment gateway
 
@@ -442,9 +471,9 @@ sail mysql
 mysql -u root -p laravel
 ```
 
-The test suite always uses the `testing` database configured by `phpunit.xml`.
-Sail creates this database automatically. Native installations must create it
-during first-time setup and grant the configured MySQL user access.
+The automated test suite uses an isolated in-memory SQLite database configured
+by `phpunit.xml`, so it runs consistently in Sail, native PHP, and CI without
+depending on the development database.
 
 ## Tests and code style
 
@@ -489,8 +518,15 @@ vendor/bin/pint
 ```
 
 Current coverage includes authentication, order CRUD and totals, authorization,
-payment processing, gateway management, charge/refund strategies, and failure
-paths.
+explicit order transitions, payment idempotency, duplicate-payment prevention,
+gateway management, charge/refund strategies, rate limiting, and failure paths.
+
+GitHub Actions runs Composer validation, Pint, and the complete Pest suite on
+pushes and pull requests. The same local checks can be run with:
+
+```bash
+composer quality
+```
 
 ## Project structure
 

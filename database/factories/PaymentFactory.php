@@ -23,15 +23,22 @@ class PaymentFactory extends Factory
         return [
             'order_id' => Order::factory()->confirmed(),
             'payment_reference' => (string) Str::uuid(),
-            'external_transaction_id' => $status === PaymentStatus::Pending
-                ? null
-                : fake()->unique()->bothify('txn_############'),
+            'idempotency_key' => (string) Str::uuid(),
+            'request_hash' => hash('sha256', fake()->uuid()),
+            'external_transaction_id' => in_array($status, [
+                PaymentStatus::Successful,
+                PaymentStatus::Failed,
+            ], true) ? fake()->unique()->bothify('txn_############') : null,
             'gateway' => fake()->randomElement(['credit_card', 'paypal', 'stripe']),
             'status' => $status,
             'amount' => fake()->randomFloat(2, 1, 9999.99),
             'payload' => [
                 'environment' => 'testing',
             ],
+            'processed_at' => in_array($status, [
+                PaymentStatus::Pending,
+                PaymentStatus::Processing,
+            ], true) ? null : now(),
         ];
     }
 
@@ -40,6 +47,7 @@ class PaymentFactory extends Factory
         return $this->state(fn (): array => [
             'status' => PaymentStatus::Pending,
             'external_transaction_id' => null,
+            'processed_at' => null,
         ]);
     }
 

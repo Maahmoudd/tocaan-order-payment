@@ -25,3 +25,14 @@ function authHeaders(User $user): array
         'Accept' => 'application/json',
     ];
 }
+
+/**
+ * @return array{Authorization: string, Accept: string, Idempotency-Key: string}
+ */
+function paymentHeaders(User $user, ?string $idempotencyKey = null): array
+{
+    return [
+        ...authHeaders($user),
+        'Idempotency-Key' => $idempotencyKey ?? fake()->uuid(),
+    ];
+}

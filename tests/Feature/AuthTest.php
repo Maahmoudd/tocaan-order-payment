@@ -1,6 +1,8 @@
 <?php
 
+use App\Exceptions\AuthBusinessRuleException;
 use App\Models\User;
+use App\Services\AuthService;
 
 it('registers a user and returns a JWT', function () {
     $response = $this->postJson('/api/v1/register', [
@@ -80,3 +82,29 @@ it('refreshes and invalidates JWTs on logout', function () {
     auth()->forgetGuards();
     $this->withToken($refreshedToken)->getJson('/api/v1/me')->assertUnauthorized();
 });
+
+it('rate limits repeated authentication attempts using the API error envelope', function () {
+    for ($attempt = 1; $attempt <= 11; $attempt++) {
+        $response = $this
+            ->withServerVariables(['REMOTE_ADDR' => '198.51.100.25'])
+            ->postJson('/api/v1/login', [
+                'email' => 'missing@example.com',
+                'password' => 'incorrect',
+            ]);
+    }
+
+    $response
+        ->assertTooManyRequests()
+        ->assertJsonPath('success', false)
+        ->assertJsonPath('message', 'Too many requests. Please try again later.');
+});
+
+it('converts a duplicate email database violation into a domain exception', function () {
+    User::factory()->create(['email' => 'duplicate@example.com']);
+
+    app(AuthService::class)->register([
+        'name' => 'Duplicate User',
+        'email' => 'duplicate@example.com',
+        'password' => 'password',
+    ]);
+})->throws(AuthBusinessRuleException::class, 'already exists');

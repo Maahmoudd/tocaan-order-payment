@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Orders\CancelOrderRequest;
+use App\Http\Requests\Orders\ConfirmOrderRequest;
 use App\Http\Requests\Orders\DeleteOrderRequest;
 use App\Http\Requests\Orders\IndexOrderRequest;
 use App\Http\Requests\Orders\ShowOrderRequest;
@@ -72,6 +74,22 @@ class OrderController extends Controller
         return $this->successResponse(
             new \stdClass,
             'Order deleted successfully.',
+        );
+    }
+
+    public function confirm(ConfirmOrderRequest $request, Order $order): JsonResponse
+    {
+        return $this->successResponse(
+            OrderResource::make($this->orderService->confirm($order)),
+            'Order confirmed successfully.',
+        );
+    }
+
+    public function cancel(CancelOrderRequest $request, Order $order): JsonResponse
+    {
+        return $this->successResponse(
+            OrderResource::make($this->orderService->cancel($order)),
+            'Order cancelled successfully.',
         );
     }
 }

@@ -11,7 +11,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['user_id', 'status', 'total_amount', 'notes'])]
+#[Fillable([
+    'user_id',
+    'status',
+    'total_amount',
+    'notes',
+    'confirmed_at',
+    'cancelled_at',
+])]
 class Order extends Model
 {
     /** @use HasFactory<OrderFactory> */
@@ -40,6 +47,8 @@ class Order extends Model
         return [
             'status' => OrderStatus::class,
             'total_amount' => 'decimal:2',
+            'confirmed_at' => 'datetime',
+            'cancelled_at' => 'datetime',
         ];
     }
 }

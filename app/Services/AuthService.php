@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Exceptions\AuthBusinessRuleException;
 use App\Models\User;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Arr;
 use LogicException;
 use Tymon\JWTAuth\JWTGuard;
@@ -20,11 +22,22 @@ class AuthService
      */
     public function register(array $attributes): array
     {
-        $user = User::query()->create(Arr::only($attributes, [
-            'name',
-            'email',
-            'password',
-        ]));
+        try {
+            $user = User::query()->create(Arr::only($attributes, [
+                'name',
+                'email',
+                'password',
+            ]));
+        } catch (QueryException $exception) {
+            if (
+                $exception->getCode() === '23000'
+                || str_contains($exception->getMessage(), 'UNIQUE constraint failed')
+            ) {
+                throw AuthBusinessRuleException::emailAlreadyRegistered();
+            }
+
+            throw $exception;
+        }
 
         return $this->tokenPayload($user, $this->guard()->login($user));
     }

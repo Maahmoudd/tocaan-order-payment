@@ -12,11 +12,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'order_id',
     'payment_reference',
+    'idempotency_key',
+    'request_hash',
     'external_transaction_id',
     'gateway',
     'status',
     'amount',
     'payload',
+    'processed_at',
 ])]
 class Payment extends Model
 {
@@ -37,6 +40,7 @@ class Payment extends Model
             'status' => PaymentStatus::class,
             'amount' => 'decimal:2',
             'payload' => 'array',
+            'processed_at' => 'datetime',
         ];
     }
 }

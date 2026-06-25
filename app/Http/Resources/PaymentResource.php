@@ -20,7 +20,8 @@ class PaymentResource extends JsonResource
             'gateway' => $this->gateway,
             'status' => $this->status->value,
             'amount' => $this->amount,
-            'payload' => $this->payload,
+            'message' => data_get($this->payload, 'message'),
+            'processed_at' => $this->processed_at?->toISOString(),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

@@ -59,7 +59,6 @@ class OrderService
 
     /**
      * @param  array{
-     *     status?: string,
      *     notes?: string|null,
      *     items?: array<int, array{product_name: string, quantity: int, unit_price: string}>
      * }  $attributes
@@ -71,13 +70,48 @@ class OrderService
 
             $this->ensurePending($lockedOrder);
 
-            $orderAttributes = Arr::only($attributes, ['status', 'notes']);
+            $orderAttributes = Arr::only($attributes, ['notes']);
 
             if (isset($attributes['items'])) {
                 $orderAttributes['total_amount'] = $this->replaceItems($lockedOrder, $attributes['items']);
             }
 
             $lockedOrder->update($orderAttributes);
+
+            return $lockedOrder->load('items')->loadCount('payments');
+        });
+    }
+
+    public function confirm(Order $order): Order
+    {
+        return DB::transaction(function () use ($order): Order {
+            $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
+
+            $this->ensurePending($lockedOrder);
+            $lockedOrder->update([
+                'status' => OrderStatus::Confirmed,
+                'confirmed_at' => now(),
+            ]);
+
+            return $lockedOrder->load('items')->loadCount('payments');
+        });
+    }
+
+    public function cancel(Order $order): Order
+    {
+        return DB::transaction(function () use ($order): Order {
+            $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
+
+            $this->ensurePending($lockedOrder);
+
+            if ($lockedOrder->payments()->exists()) {
+                throw OrderBusinessRuleException::cannotCancelWithPayments();
+            }
+
+            $lockedOrder->update([
+                'status' => OrderStatus::Cancelled,
+                'cancelled_at' => now(),
+            ]);
 
             return $lockedOrder->load('items')->loadCount('payments');
         });

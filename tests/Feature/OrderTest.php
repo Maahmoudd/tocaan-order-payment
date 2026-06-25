@@ -76,6 +76,35 @@ it('updates items and recalculates the order total', function () {
         ->assertJsonCount(1, 'data.items');
 });
 
+it('confirms and cancels orders through explicit transitions', function () {
+    $user = User::factory()->create();
+    $confirmOrder = Order::factory()->for($user)->pending()->create();
+    $cancelOrder = Order::factory()->for($user)->pending()->create();
+
+    $this->withHeaders(authHeaders($user))
+        ->postJson("/api/v1/orders/{$confirmOrder->id}/confirm")
+        ->assertOk()
+        ->assertJsonPath('data.status', OrderStatus::Confirmed->value)
+        ->assertJsonPath('data.confirmed_at', fn ($value) => is_string($value));
+
+    $this->withHeaders(authHeaders($user))
+        ->postJson("/api/v1/orders/{$cancelOrder->id}/cancel")
+        ->assertOk()
+        ->assertJsonPath('data.status', OrderStatus::Cancelled->value)
+        ->assertJsonPath('data.cancelled_at', fn ($value) => is_string($value));
+});
+
+it('does not accept status changes through the generic update endpoint', function () {
+    $user = User::factory()->create();
+    $order = Order::factory()->for($user)->pending()->create();
+
+    $this->withHeaders(authHeaders($user))
+        ->patchJson("/api/v1/orders/{$order->id}", ['status' => 'confirmed'])
+        ->assertUnprocessable();
+
+    expect($order->fresh()?->status)->toBe(OrderStatus::Pending);
+});
+
 it('allows mutations only while an order is pending', function () {
     $user = User::factory()->create();
     $order = Order::factory()->for($user)->confirmed()->create();
@@ -96,6 +125,18 @@ it('does not delete a pending order that has payments', function () {
 
     $this->withHeaders(authHeaders($user))
         ->deleteJson("/api/v1/orders/{$order->id}")
+        ->assertConflict();
+
+    expect($order->fresh()?->status)->toBe(OrderStatus::Pending);
+});
+
+it('does not cancel a pending order that has a payment attempt', function () {
+    $user = User::factory()->create();
+    $order = Order::factory()->for($user)->pending()->create(['total_amount' => '10.00']);
+    Payment::factory()->for($order)->pending()->create(['amount' => '10.00']);
+
+    $this->withHeaders(authHeaders($user))
+        ->postJson("/api/v1/orders/{$order->id}/cancel")
         ->assertConflict();
 
     expect($order->fresh()?->status)->toBe(OrderStatus::Pending);

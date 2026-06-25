@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('external_transaction_id')->nullable();
             $table->string('gateway');
             $table->enum('status', array_column(PaymentStatus::cases(), 'value'))
-                ->default(PaymentStatus::Pending->value);
+                ->default(PaymentStatus::Processing->value);
             $table->decimal('amount', 10, 2);
             $table->json('payload')->nullable();
             $table->timestamps();

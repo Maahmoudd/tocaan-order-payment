@@ -61,6 +61,11 @@
       "key": "payment_id",
       "value": "1",
       "type": "string"
+    },
+    {
+      "key": "idempotency_key",
+      "value": "postman-payment-attempt-1",
+      "type": "string"
     }
   ],
   "item": [
@@ -498,36 +503,18 @@
         {
           "name": "Confirm Order",
           "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"status\": \"confirmed\"\n}"
-            },
-            "url": "{{base_url}}/orders/{{order_id}}",
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/orders/{{order_id}}/confirm",
             "description": "Confirms a pending order so it can be paid."
           },
           "response": [
             {
               "name": "Order Confirmed",
               "originalRequest": {
-                "method": "PATCH",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"status\": \"confirmed\"\n}"
-                },
-                "url": "{{base_url}}/orders/1"
+                "method": "POST",
+                "header": [],
+                "url": "{{base_url}}/orders/1/confirm"
               },
               "status": "OK",
               "code": 200,
@@ -538,7 +525,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Order updated successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"user_id\": 1,\n    \"status\": \"confirmed\",\n    \"total_amount\": \"99.95\",\n    \"notes\": \"Call on arrival\",\n    \"items\": [\n      {\n        \"id\": 3,\n        \"product_name\": \"Mechanical Keyboard\",\n        \"quantity\": 1,\n        \"unit_price\": \"99.95\",\n        \"subtotal\": \"99.95\",\n        \"created_at\": \"2026-06-24T12:05:00.000000Z\",\n        \"updated_at\": \"2026-06-24T12:05:00.000000Z\"\n      }\n    ],\n    \"payments_count\": 0,\n    \"created_at\": \"2026-06-24T12:00:00.000000Z\",\n    \"updated_at\": \"2026-06-24T12:06:00.000000Z\"\n  },\n  \"meta\": {}\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Order confirmed successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"status\": \"confirmed\",\n    \"confirmed_at\": \"2026-06-24T12:06:00.000000Z\"\n  },\n  \"meta\": {}\n}"
             }
           ]
         },
@@ -597,6 +584,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotency_key}}"
               }
             ],
             "body": {
@@ -632,7 +623,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Payment processed successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"order_id\": 1,\n    \"payment_reference\": \"fbb85d3e-195d-40d5-93d5-1cf173c14539\",\n    \"external_transaction_id\": \"stripe_01jexample\",\n    \"gateway\": \"stripe\",\n    \"status\": \"successful\",\n    \"amount\": \"99.95\",\n    \"payload\": {\n      \"response\": {\n        \"gateway\": \"stripe\",\n        \"transaction_id\": \"stripe_01jexample\",\n        \"status\": \"succeeded\"\n      },\n      \"message\": \"Stripe payment processed.\"\n    },\n    \"created_at\": \"2026-06-24T12:10:00.000000Z\",\n    \"updated_at\": \"2026-06-24T12:10:00.000000Z\"\n  },\n  \"meta\": {}\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Payment processed successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"order_id\": 1,\n    \"payment_reference\": \"fbb85d3e-195d-40d5-93d5-1cf173c14539\",\n    \"external_transaction_id\": \"stripe_01jexample\",\n    \"gateway\": \"stripe\",\n    \"status\": \"successful\",\n    \"amount\": \"99.95\",\n    \"message\": \"Stripe payment processed.\",\n    \"processed_at\": \"2026-06-24T12:10:00.000000Z\",\n    \"created_at\": \"2026-06-24T12:10:00.000000Z\",\n    \"updated_at\": \"2026-06-24T12:10:00.000000Z\"\n  },\n  \"meta\": {}\n}"
             }
           ]
         },
@@ -644,6 +635,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "postman-failed-payment-attempt-1"
               }
             ],
             "body": {
@@ -651,7 +646,7 @@
               "raw": "{\n  \"gateway\": \"credit_card\",\n  \"payload\": {\n    \"card_token\": \"tok_example\",\n    \"simulate_failure\": true\n  }\n}"
             },
             "url": "{{base_url}}/orders/{{order_id}}/payments",
-            "description": "Demonstrates a persisted failed gateway outcome. The endpoint still returns 201 because the payment attempt was recorded."
+            "description": "Demonstrates a persisted failed gateway outcome. Use a separate confirmed order that has no successful or unresolved payment. The endpoint returns 201 because the attempt was recorded."
           },
           "response": [
             {
@@ -679,7 +674,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Payment processing failed.\",\n  \"data\": {\n    \"id\": 2,\n    \"order_id\": 1,\n    \"payment_reference\": \"26b8e710-9638-4fe6-b147-d5f079882155\",\n    \"external_transaction_id\": \"cc_01jexample\",\n    \"gateway\": \"credit_card\",\n    \"status\": \"failed\",\n    \"amount\": \"99.95\",\n    \"payload\": {\n      \"response\": {\n        \"gateway\": \"credit_card\",\n        \"transaction_id\": \"cc_01jexample\",\n        \"status\": \"declined\"\n      },\n      \"message\": \"Credit card payment declined.\"\n    },\n    \"created_at\": \"2026-06-24T12:11:00.000000Z\",\n    \"updated_at\": \"2026-06-24T12:11:00.000000Z\"\n  },\n  \"meta\": {}\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Payment processing failed.\",\n  \"data\": {\n    \"id\": 2,\n    \"order_id\": 1,\n    \"payment_reference\": \"26b8e710-9638-4fe6-b147-d5f079882155\",\n    \"external_transaction_id\": \"cc_01jexample\",\n    \"gateway\": \"credit_card\",\n    \"status\": \"failed\",\n    \"amount\": \"99.95\",\n    \"message\": \"Credit card payment declined.\",\n    \"processed_at\": \"2026-06-24T12:11:00.000000Z\",\n    \"created_at\": \"2026-06-24T12:11:00.000000Z\",\n    \"updated_at\": \"2026-06-24T12:11:00.000000Z\"\n  },\n  \"meta\": {}\n}"
             }
           ]
         },
@@ -725,7 +720,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Order payments retrieved successfully.\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"order_id\": 1,\n      \"payment_reference\": \"fbb85d3e-195d-40d5-93d5-1cf173c14539\",\n      \"external_transaction_id\": \"stripe_01jexample\",\n      \"gateway\": \"stripe\",\n      \"status\": \"successful\",\n      \"amount\": \"99.95\",\n      \"payload\": {\n        \"response\": {\n          \"gateway\": \"stripe\",\n          \"transaction_id\": \"stripe_01jexample\",\n          \"status\": \"succeeded\"\n        },\n        \"message\": \"Stripe payment processed.\"\n      },\n      \"created_at\": \"2026-06-24T12:10:00.000000Z\",\n      \"updated_at\": \"2026-06-24T12:10:00.000000Z\"\n    }\n  ],\n  \"meta\": {\n    \"current_page\": 1,\n    \"from\": 1,\n    \"last_page\": 1,\n    \"path\": \"http://localhost/api/v1/orders/1/payments\",\n    \"per_page\": 15,\n    \"to\": 1,\n    \"total\": 1\n  }\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Order payments retrieved successfully.\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"order_id\": 1,\n      \"payment_reference\": \"fbb85d3e-195d-40d5-93d5-1cf173c14539\",\n      \"external_transaction_id\": \"stripe_01jexample\",\n      \"gateway\": \"stripe\",\n      \"status\": \"successful\",\n      \"amount\": \"99.95\",\n      \"message\": \"Stripe payment processed.\",\n      \"processed_at\": \"2026-06-24T12:10:00.000000Z\",\n      \"created_at\": \"2026-06-24T12:10:00.000000Z\",\n      \"updated_at\": \"2026-06-24T12:10:00.000000Z\"\n    }\n  ],\n  \"meta\": {\n    \"current_page\": 1,\n    \"from\": 1,\n    \"last_page\": 1,\n    \"path\": \"http://localhost/api/v1/orders/1/payments\",\n    \"per_page\": 15,\n    \"to\": 1,\n    \"total\": 1\n  }\n}"
             }
           ]
         },
@@ -779,7 +774,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Payments retrieved successfully.\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"order_id\": 1,\n      \"payment_reference\": \"fbb85d3e-195d-40d5-93d5-1cf173c14539\",\n      \"external_transaction_id\": \"stripe_01jexample\",\n      \"gateway\": \"stripe\",\n      \"status\": \"successful\",\n      \"amount\": \"99.95\",\n      \"payload\": {\n        \"response\": {\n          \"gateway\": \"stripe\",\n          \"transaction_id\": \"stripe_01jexample\",\n          \"status\": \"succeeded\"\n        },\n        \"message\": \"Stripe payment processed.\"\n      },\n      \"created_at\": \"2026-06-24T12:10:00.000000Z\",\n      \"updated_at\": \"2026-06-24T12:10:00.000000Z\"\n    }\n  ],\n  \"meta\": {\n    \"current_page\": 1,\n    \"from\": 1,\n    \"last_page\": 1,\n    \"path\": \"http://localhost/api/v1/payments\",\n    \"per_page\": 15,\n    \"to\": 1,\n    \"total\": 1\n  }\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Payments retrieved successfully.\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"order_id\": 1,\n      \"payment_reference\": \"fbb85d3e-195d-40d5-93d5-1cf173c14539\",\n      \"external_transaction_id\": \"stripe_01jexample\",\n      \"gateway\": \"stripe\",\n      \"status\": \"successful\",\n      \"amount\": \"99.95\",\n      \"message\": \"Stripe payment processed.\",\n      \"processed_at\": \"2026-06-24T12:10:00.000000Z\",\n      \"created_at\": \"2026-06-24T12:10:00.000000Z\",\n      \"updated_at\": \"2026-06-24T12:10:00.000000Z\"\n    }\n  ],\n  \"meta\": {\n    \"current_page\": 1,\n    \"from\": 1,\n    \"last_page\": 1,\n    \"path\": \"http://localhost/api/v1/payments\",\n    \"per_page\": 15,\n    \"to\": 1,\n    \"total\": 1\n  }\n}"
             }
           ]
         },
@@ -808,7 +803,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Payment retrieved successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"order_id\": 1,\n    \"payment_reference\": \"fbb85d3e-195d-40d5-93d5-1cf173c14539\",\n    \"external_transaction_id\": \"stripe_01jexample\",\n    \"gateway\": \"stripe\",\n    \"status\": \"successful\",\n    \"amount\": \"99.95\",\n    \"payload\": {\n      \"response\": {\n        \"gateway\": \"stripe\",\n        \"transaction_id\": \"stripe_01jexample\",\n        \"status\": \"succeeded\"\n      },\n      \"message\": \"Stripe payment processed.\"\n    },\n    \"created_at\": \"2026-06-24T12:10:00.000000Z\",\n    \"updated_at\": \"2026-06-24T12:10:00.000000Z\"\n  },\n  \"meta\": {}\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Payment retrieved successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"order_id\": 1,\n    \"payment_reference\": \"fbb85d3e-195d-40d5-93d5-1cf173c14539\",\n    \"external_transaction_id\": \"stripe_01jexample\",\n    \"gateway\": \"stripe\",\n    \"status\": \"successful\",\n    \"amount\": \"99.95\",\n    \"message\": \"Stripe payment processed.\",\n    \"processed_at\": \"2026-06-24T12:10:00.000000Z\",\n    \"created_at\": \"2026-06-24T12:10:00.000000Z\",\n    \"updated_at\": \"2026-06-24T12:10:00.000000Z\"\n  },\n  \"meta\": {}\n}"
             }
           ]
         }

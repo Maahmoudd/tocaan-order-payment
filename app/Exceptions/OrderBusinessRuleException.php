@@ -15,4 +15,9 @@ class OrderBusinessRuleException extends RuntimeException
     {
         return new self('Orders with payments cannot be deleted.');
     }
+
+    public static function cannotCancelWithPayments(): self
+    {
+        return new self('Orders with payment attempts cannot be cancelled.');
+    }
 }

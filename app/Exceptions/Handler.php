@@ -37,6 +37,14 @@ class Handler extends ExceptionHandler
         );
 
         $this->renderable(
+            fn (AuthBusinessRuleException $exception, Request $request): ?JsonResponse => $this->apiError(
+                $request,
+                $exception->getMessage(),
+                409,
+            ),
+        );
+
+        $this->renderable(
             fn (OrderBusinessRuleException $exception, Request $request): ?JsonResponse => $this->apiError(
                 $request,
                 $exception->getMessage(),
@@ -49,6 +57,14 @@ class Handler extends ExceptionHandler
                 $request,
                 $exception->getMessage(),
                 409,
+            ),
+        );
+
+        $this->renderable(
+            fn (PaymentGatewayException $exception, Request $request): ?JsonResponse => $this->apiError(
+                $request,
+                $exception->getMessage(),
+                502,
             ),
         );
 

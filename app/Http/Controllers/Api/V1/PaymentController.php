@@ -25,14 +25,17 @@ class PaymentController extends Controller
 
     public function store(StorePaymentRequest $request, Order $order): JsonResponse
     {
-        $payment = $this->paymentService->process($order, $request->validated());
+        $processedPayment = $this->paymentService->process($order, $request->validated());
+        $payment = $processedPayment->payment;
 
         return $this->successResponse(
             PaymentResource::make($payment),
-            $payment->status === PaymentStatus::Successful
+            $processedPayment->replayed
+                ? 'The original payment result was returned.'
+                : ($payment->status === PaymentStatus::Successful
                 ? 'Payment processed successfully.'
-                : 'Payment processing failed.',
-            201,
+                : 'Payment processing failed.'),
+            $processedPayment->replayed ? 200 : 201,
         );
     }
 

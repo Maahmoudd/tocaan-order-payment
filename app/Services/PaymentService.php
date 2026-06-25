@@ -5,13 +5,17 @@ namespace App\Services;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Exceptions\PaymentBusinessRuleException;
+use App\Exceptions\PaymentGatewayException;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
 use App\Payments\PaymentGatewayManager;
+use App\ValueObjects\ProcessedPayment;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Throwable;
 
 class PaymentService
 {
@@ -20,30 +24,108 @@ class PaymentService
     ) {}
 
     /**
-     * @param  array{gateway: string, payload: array<string, mixed>}  $attributes
+     * @param  array{gateway: string, idempotency_key: string, payload: array<string, mixed>}  $attributes
      */
-    public function process(Order $order, array $attributes): Payment
+    public function process(Order $order, array $attributes): ProcessedPayment
     {
         $gateway = $this->gatewayManager->gateway($attributes['gateway']);
+        $requestHash = $this->requestHash($attributes);
 
-        [$lockedOrder, $payment] = DB::transaction(function () use ($order, $gateway): array {
-            $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
+        try {
+            $attempt = DB::transaction(function () use ($order, $gateway, $attributes, $requestHash): array {
+                $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
 
-            if ($lockedOrder->status !== OrderStatus::Confirmed) {
-                throw PaymentBusinessRuleException::orderNotConfirmed();
+                $existingPayment = Payment::query()
+                    ->where('idempotency_key', $attributes['idempotency_key'])
+                    ->first();
+
+                if ($existingPayment instanceof Payment) {
+                    if (
+                        $existingPayment->order_id !== $lockedOrder->id
+                        || $existingPayment->gateway !== $gateway->getGatewayName()
+                        || (
+                            $existingPayment->request_hash !== null
+                            && $existingPayment->request_hash !== $requestHash
+                        )
+                    ) {
+                        throw PaymentBusinessRuleException::idempotencyKeyConflict();
+                    }
+
+                    return [$lockedOrder, $existingPayment, true];
+                }
+
+                if ($lockedOrder->status !== OrderStatus::Confirmed) {
+                    throw PaymentBusinessRuleException::orderNotConfirmed();
+                }
+
+                if ($lockedOrder->payments()->where('status', PaymentStatus::Successful)->exists()) {
+                    throw PaymentBusinessRuleException::alreadyPaid();
+                }
+
+                if ($lockedOrder->payments()->whereIn('status', [
+                    PaymentStatus::Pending,
+                    PaymentStatus::Processing,
+                    PaymentStatus::Unknown,
+                ])->exists()) {
+                    throw PaymentBusinessRuleException::unresolvedAttempt();
+                }
+
+                $payment = $lockedOrder->payments()->create([
+                    'payment_reference' => (string) Str::uuid(),
+                    'idempotency_key' => $attributes['idempotency_key'],
+                    'request_hash' => $requestHash,
+                    'gateway' => $gateway->getGatewayName(),
+                    'status' => PaymentStatus::Processing,
+                    'amount' => $lockedOrder->total_amount,
+                ]);
+
+                return [$lockedOrder, $payment, false];
+            });
+        } catch (QueryException $exception) {
+            $existingPayment = Payment::query()
+                ->where('idempotency_key', $attributes['idempotency_key'])
+                ->first();
+
+            if ($existingPayment instanceof Payment) {
+                if (
+                    $existingPayment->order_id !== $order->id
+                    || $existingPayment->gateway !== $gateway->getGatewayName()
+                    || (
+                        $existingPayment->request_hash !== null
+                        && $existingPayment->request_hash !== $requestHash
+                    )
+                ) {
+                    throw PaymentBusinessRuleException::idempotencyKeyConflict();
+                }
+
+                return new ProcessedPayment($existingPayment, true);
             }
 
-            $payment = $lockedOrder->payments()->create([
-                'payment_reference' => (string) Str::uuid(),
-                'gateway' => $gateway->getGatewayName(),
-                'status' => PaymentStatus::Pending,
-                'amount' => $lockedOrder->total_amount,
+            throw $exception;
+        }
+
+        /** @var array{0: Order, 1: Payment, 2: bool} $attempt */
+        [$lockedOrder, $payment, $replayed] = $attempt;
+
+        if ($replayed) {
+            return new ProcessedPayment($payment, true);
+        }
+
+        try {
+            $result = $gateway->charge($lockedOrder, $attributes['payload']);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            $payment->update([
+                'status' => PaymentStatus::Unknown,
+                'payload' => [
+                    'message' => 'The provider outcome is unknown.',
+                ],
+                'processed_at' => now(),
             ]);
 
-            return [$lockedOrder, $payment];
-        });
-
-        $result = $gateway->charge($lockedOrder, $attributes['payload']);
+            throw PaymentGatewayException::outcomeUnknown();
+        }
 
         $payment->update([
             'external_transaction_id' => $result->transactionId,
@@ -52,9 +134,10 @@ class PaymentService
                 'response' => $result->rawResponse,
                 'message' => $result->message,
             ],
+            'processed_at' => now(),
         ]);
 
-        return $payment->refresh();
+        return new ProcessedPayment($payment->refresh(), false);
     }
 
     /**
@@ -93,5 +176,33 @@ class PaymentService
     public function show(Payment $payment): Payment
     {
         return $payment;
+    }
+
+    /**
+     * @param  array{gateway: string, payload: array<string, mixed>}  $attributes
+     */
+    private function requestHash(array $attributes): string
+    {
+        $request = [
+            'gateway' => $attributes['gateway'],
+            'payload' => $this->normalizeForHash($attributes['payload']),
+        ];
+
+        return hash('sha256', json_encode($request, JSON_THROW_ON_ERROR));
+    }
+
+    private function normalizeForHash(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        if (array_is_list($value)) {
+            return array_map($this->normalizeForHash(...), $value);
+        }
+
+        ksort($value);
+
+        return array_map($this->normalizeForHash(...), $value);
     }
 }

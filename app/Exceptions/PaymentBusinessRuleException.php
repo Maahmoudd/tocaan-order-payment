@@ -20,4 +20,19 @@ class PaymentBusinessRuleException extends RuntimeException
     {
         return new self("The configured payment gateway [{$gateway}] is invalid.");
     }
+
+    public static function alreadyPaid(): self
+    {
+        return new self('This order already has a successful payment.');
+    }
+
+    public static function unresolvedAttempt(): self
+    {
+        return new self('This order already has an unresolved payment attempt.');
+    }
+
+    public static function idempotencyKeyConflict(): self
+    {
+        return new self('The idempotency key has already been used for another payment request.');
+    }
 }

@@ -2,10 +2,8 @@
 
 namespace App\Http\Requests\Orders;
 
-use App\Enums\OrderStatus;
 use App\Http\Requests\ApiRequest;
 use App\Models\Order;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class UpdateOrderRequest extends ApiRequest
@@ -23,7 +21,6 @@ class UpdateOrderRequest extends ApiRequest
     public function rules(): array
     {
         return [
-            'status' => ['sometimes', Rule::enum(OrderStatus::class)],
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'items' => ['sometimes', 'array', 'min:1', 'max:10'],
             'items.*.product_name' => ['required_with:items', 'string', 'max:255'],
@@ -39,7 +36,7 @@ class UpdateOrderRequest extends ApiRequest
     {
         return [
             function (Validator $validator): void {
-                if (! $this->hasAny(['status', 'notes', 'items'])) {
+                if (! $this->hasAny(['notes', 'items'])) {
                     $validator->errors()->add('order', 'At least one order field must be provided.');
                 }
             },

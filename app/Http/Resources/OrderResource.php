@@ -20,6 +20,8 @@ class OrderResource extends JsonResource
             'notes' => $this->notes,
             'items' => OrderItemResource::collection($this->whenLoaded('items')),
             'payments_count' => $this->whenCounted('payments'),
+            'confirmed_at' => $this->confirmed_at?->toISOString(),
+            'cancelled_at' => $this->cancelled_at?->toISOString(),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

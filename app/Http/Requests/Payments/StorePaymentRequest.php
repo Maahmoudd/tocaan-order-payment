@@ -24,11 +24,19 @@ class StorePaymentRequest extends ApiRequest
 
         return [
             'gateway' => ['required', 'string', Rule::in($gatewayNames)],
+            'idempotency_key' => ['required', 'string', 'max:255'],
             'payload' => ['required', 'array'],
             'payload.card_token' => ['required_if:gateway,credit_card', 'string', 'max:255'],
             'payload.paypal_order_id' => ['required_if:gateway,paypal', 'string', 'max:255'],
             'payload.payment_method_id' => ['required_if:gateway,stripe', 'string', 'max:255'],
             'payload.simulate_failure' => ['sometimes', 'boolean'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'idempotency_key' => $this->header('Idempotency-Key'),
+        ]);
     }
 }
